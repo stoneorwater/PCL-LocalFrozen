@@ -46,3 +46,11 @@ HMCL Transformer Discovery Service 源码与构建来源见 `third-party/HMCLTra
 System.Net.Http.Formatting 属于 ASP.NET Web Stack（.NET Foundation，Apache-2.0）；libwebp 采用其 COPYING 中的 BSD 条款。
 Forge 安装辅助资源来自上游，来源为 https://github.com/bangbang93/forge-install-bootstrapper ，原仓库未提供独立许可证文件，未擅自将其标记为 MIT/GPL；不对其额外授予权利。
 Iconmonstr、Iconfont 图形以及上游帮助、字体等资源沿用上游资源，保留原始署名及许可链接；本项目不对其重新许可。
+
+## 随附文本与资源来源
+
+`licenses/` 保存从组件官方仓库取得的许可正文及 `sources.json` 来源清单。MeloongCore 的 Apache-2.0 正文保留于子模块 LICENSE.txt。
+HMCL Transformer Discovery Service 源码与构建来源见 `third-party/HMCLTransformerDiscoveryService/`。
+System.Net.Http.Formatting 属于 ASP.NET Web Stack（.NET Foundation，Apache-2.0）；libwebp 采用其 COPYING 中的 BSD 条款。
+Forge 安装辅助资源来自上游，来源为 https://github.com/bangbang93/forge-install-bootstrapper ，原仓库未提供独立许可证文件，未擅自将其标记为 MIT/GPL；不对其额外授予权利。
+Iconmonstr、Iconfont 图形以及上游帮助、字体等资源沿用上游资源，保留原始署名及许可链接；本项目不对其重新许可。
