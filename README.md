@@ -73,16 +73,3 @@ Git 克隆时使用 `git clone --recurse-submodules https://github.com/stoneorwa
 可省略 `-DotNetPath` 使用 PATH 中的 `dotnet`；仅安装运行时不足以构建。
 产物为 `Plain Craft Launcher 2/bin/Plain Craft Launcher 2.exe`，可重命名为 `PCL-LocalFrozen.exe`。
 运行时不要求安装 .NET 10；它只用于源码编译。
-
-## 验证
-
-2026-10-25 已在独立测试目录完成：
-
-- Release 构建成功；随包构建脚本重新还原依赖并成功构建，产物 SHA-256 与测试程序相同。
-- 单个 EXE 正常启动；设置页显示固定版说明，更新/公告设置和按钮已移除。
-- 获取 Minecraft 版本列表，下载并安装原版 1.12.2。
-- 用测试角色 `PCLBuildTest` 启动 1.12.2，进入游戏主菜单；未使用用户账号、未创建世界、未连接多人服务器。
-- 旧 `--update` 参数测试返回 1，测试哨兵文件哈希未变。
-
-详细下载完整性检查、网络日志检查及产物哈希见 `verification.json` 和 `SHA256SUMS.txt`。
-源码检查与测试日志检查不等同于穷尽所有网络路径的抓包审计，也不能保证远端下载服务长期可用。
