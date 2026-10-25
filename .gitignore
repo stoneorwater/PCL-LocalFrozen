@@ -342,3 +342,10 @@ ASALocalRun/
 healthchecksdb
 
 MaskFiles/
+
+# LocalFrozen build caches and private runtime data
+.build/
+.minecraft/
+PCL/
+.env
+*.user

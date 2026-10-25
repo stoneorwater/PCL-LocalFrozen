@@ -951,4 +951,13 @@
 
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+  <!-- Portable SDK builds need an explicit WPF import; desktop MSBuild already imports it. -->
+  <PropertyGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
+    <IncludePackageReferencesDuringMarkupCompilation>false</IncludePackageReferencesDuringMarkupCompilation>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
+    <Reference Include="mscorlib" />
+    <Reference Include="Microsoft.VisualBasic" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Sdks\Microsoft.NET.Sdk.WindowsDesktop\targets\Microsoft.WinFX.targets" Condition="'$(MSBuildRuntimeType)' == 'Core'" />
 </Project>

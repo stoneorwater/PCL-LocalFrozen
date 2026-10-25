@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-25",
+  "upstream_commit": "5ef81e490ae46b1100d61e33d0183094c7a80ca8",
+  "core_commit": "c774ae4c85fd94e0eaa171db21e78a65870df19b",
+  "sdk": "10.0.402",
+  "target": ".NET Framework 4.8",
+  "exe_sha256": "112aafa5d6a59e110a5453bda344ad6926eb1bdcb5154024f8bd0bedc0dda173",
+  "rebuild_matches_tested_exe": true,
+  "update_entry": {
+    "Test": "Legacy updater rejected",
+    "ExitCode": 1,
+    "SentinelUnchanged": true
+  },
+  "ui": {
+    "launcher_started": true,
+    "update_controls_removed": true,
+    "minecraft_1_12_2_main_menu_observed": true
+  },
+  "download_integrity": {
+    "client_jar": "SHA-1 verified",
+    "asset_index": "SHA-1 verified",
+    "asset_files_verified": 1305,
+    "library_files_verified": 34
+  },
+  "removed_symbols_absent_from_runtime_source": [
+    "UpdateCheckByButton",
+    "UpdateRestart",
+    "UpdateReplace",
+    "DownloadLatestPCL",
+    "ServerLoader",
+    "IsLauncherNewest",
+    "SystemSystemUpdate",
+    "SystemSystemActivity"
+  ],
+  "update_notice_endpoint_or_Latest_exe_in_test_log": false,
+  "public_domains_observed_in_test_log": [
+    "api.curseforge.com",
+    "api.modrinth.com",
+    "bmclapi2.bangbang93.com",
+    "dl.liteloader.com",
+    "files.minecraftforge.net",
+    "launchermeta.mojang.com",
+    "libraries.minecraft.net",
+    "maven.neoforged.net",
+    "meta.fabricmc.net",
+    "mod.mcimirror.top",
+    "optifine.net",
+    "piston-data.mojang.com",
+    "piston-meta.mojang.com",
+    "resources.download.minecraft.net"
+  ],
+  "limitations": [
+    "No exhaustive packet capture",
+    "Microsoft account login and CurseForge require user-owned credentials and were not tested",
+    "Official remote-configuration-based multiplayer service is unavailable",
+    "Not all loaders, modpacks, export workflows or game versions tested"
+  ]
+}

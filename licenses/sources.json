@@ -1,0 +1,42 @@
+[
+  {
+    "file": "Newtonsoft.Json.txt",
+    "url": "https://raw.githubusercontent.com/JamesNK/Newtonsoft.Json/13.0.3/LICENSE.md"
+  },
+  {
+    "file": "NAudio.txt",
+    "url": "https://raw.githubusercontent.com/naudio/NAudio/f98664ba3d5966a736dd5cf45329e542be5fece8/license.txt"
+  },
+  {
+    "file": "Ookii.Dialogs.txt",
+    "url": "https://raw.githubusercontent.com/caioproiete/ookii-dialogs-wpf/master/LICENSE"
+  },
+  {
+    "file": "Imazen.WebP.txt",
+    "url": "https://raw.githubusercontent.com/imazen/libwebp-net/master/LICENSE.txt"
+  },
+  {
+    "file": "CacheCow.txt",
+    "url": "https://raw.githubusercontent.com/aliostad/CacheCow/master/LICENSE.txt"
+  },
+  {
+    "file": "Apache-2.0.txt",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.txt"
+  },
+  {
+    "file": "libwebp.txt",
+    "url": "https://raw.githubusercontent.com/webmproject/libwebp/main/COPYING"
+  },
+  {
+    "file": "System.Net.Http.Formatting.txt",
+    "url": "https://raw.githubusercontent.com/aspnet/AspNetWebStack/main/LICENSE.txt"
+  },
+  {
+    "file": "HMCL.txt",
+    "url": "https://raw.githubusercontent.com/HMCL-dev/HMCL/main/LICENSE"
+  },
+  {
+    "file": "JavaWrapper.txt",
+    "url": "https://raw.githubusercontent.com/00ll00/java_launch_wrapper/master/LICENCE"
+  }
+]

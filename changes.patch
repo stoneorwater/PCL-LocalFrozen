@@ -1,0 +1,560 @@
+diff --git a/Plain Craft Launcher 2/Application.xaml.vb b/Plain Craft Launcher 2/Application.xaml.vb
+index 2b5e788..d3ab5af 100644
+--- a/Plain Craft Launcher 2/Application.xaml.vb	
++++ b/Plain Craft Launcher 2/Application.xaml.vb	
+@@ -6,10 +6,15 @@ Public Class Application
+     '开始
+     Private Sub Application_Startup(sender As Object, e As StartupEventArgs) Handles Me.Startup
+         Try
++            '拒绝旧更新器入口，不读取参数路径、不替换程序文件。
++            If e.Args.Contains("--update") Then
++                Environment.Exit(ProcessReturnValues.Fail)
++                Return
++            End If
+             '核心初始化
+             MeloongCore.Main.Init("PCL")
+             MeloongCore.Wpf.Main.Init()
+-            If Not (e.Args.Contains("--update") OrElse e.Args.Contains("--gpu") OrElse e.Args.Contains("--memory")) Then '若是通过命令行调用，则不检查单例、不轮换日志（#9137）
++            If Not (e.Args.Contains("--gpu") OrElse e.Args.Contains("--memory")) Then '若是通过命令行调用，则不检查单例、不轮换日志（#9137）
+                 WaitingMutex(e)
+                 Logger.Instance = New PclLogger With {.logFolder = Paths.BaseThenName, .MinLevel = If(ModeDebug, LogLevel.Trace, LogLevel.Info)}
+             End If
+@@ -38,11 +43,7 @@ Public Class Application
+             End Try
+             '检查参数调用
+             If e.Args.Length > 0 Then
+-                If e.Args(0) = "--update" Then
+-                    '自动更新
+-                    UpdateReplace(e.Args(1), e.Args(2).Trim(""""), e.Args(3).Trim(""""), e.Args(4))
+-                    Environment.Exit(ProcessReturnValues.TaskDone)
+-                ElseIf e.Args(0) = "--gpu" Then
++                If e.Args(0) = "--gpu" Then
+                     '调整显卡设置
+                     Try
+                         SetGPUPreference(e.Args(1).Trim(""""))
+@@ -84,12 +85,12 @@ RetryCacheCheck:
+                 DirectoryUtils.Create(PathTemp)
+                 CheckPermissionWithException(PathTemp)
+             Catch ex As Exception
+-                If PathUtils.IsSame(PathTemp, Path.GetTempPath() & "PCL\") Then
++                If PathUtils.IsSame(PathTemp, Path.GetTempPath() & "PCLLocalFrozen214\") Then
+                     MyMsgBox("PCL 无法访问缓存文件夹，可能导致程序出错或无法正常使用！" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
+                 Else
+                     MyMsgBox("手动设置的缓存文件夹不可用，PCL 将使用默认缓存文件夹。" & vbCrLf & vbCrLf & "错误原因：" & ex.GetDisplay(True), "缓存文件夹不可用")
+                     Settings.Set("SystemSystemCache", "")
+-                    PathTemp = Path.GetTempPath() & "PCL\"
++                    PathTemp = Path.GetTempPath() & "PCLLocalFrozen214\"
+                     GoTo RetryCacheCheck
+                 End If
+             End Try
+@@ -152,7 +153,7 @@ RetryCacheCheck:
+         If BuildType = BuildTypes.Debug Then Return
+         Try
+             Dim MutexCreatedNew As Boolean
+-            PclMutex = New Mutex(True, "PCL_SingletonMutex", MutexCreatedNew)
++            PclMutex = New Mutex(True, "PCL_LocalFrozen214_SingletonMutex", MutexCreatedNew)
+             If MutexCreatedNew Then Return
+             Logger.Warn("已有一个 PCL 实例正在运行")
+             '等待已有的 PCL 退出
+@@ -164,8 +165,7 @@ RetryCacheCheck:
+                 End Try
+             End If
+             '将已有的 PCL 窗口拖出来
+-            Dim WindowHwnd As IntPtr = FindWindow(Nothing, "Plain Craft Launcher　")
+-            If WindowHwnd = IntPtr.Zero Then WindowHwnd = FindWindow(Nothing, "Plain Craft Launcher 2　")
++            Dim WindowHwnd As IntPtr = FindWindow(Nothing, "Plain Craft Launcher (PCL) 本地固定版")
+             If WindowHwnd <> IntPtr.Zero Then ShowWindowToTop(WindowHwnd)
+             '播放提示音并退出
+             Beep()
+diff --git a/Plain Craft Launcher 2/FormMain.xaml b/Plain Craft Launcher 2/FormMain.xaml
+index 2a840f5..ce02386 100644
+--- a/Plain Craft Launcher 2/FormMain.xaml	
++++ b/Plain Craft Launcher 2/FormMain.xaml	
+@@ -4,7 +4,7 @@
+     xmlns:local="clr-namespace:PCL"
+     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
+     x:Name="WindMain" x:Class="FormMain" Style="{StaticResource MyWindow}"
+-    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher　" AllowsTransparency="True" MinHeight="470" MinWidth="810" 
++    AllowDrop="True" Topmost="True" Title="Plain Craft Launcher (PCL) 本地固定版" AllowsTransparency="True" MinHeight="470" MinWidth="810"
+     ScrollViewer.VerticalScrollBarVisibility="Disabled" Icon="/Plain Craft Launcher 2;component/Images/icon.ico" WindowStyle="None" 
+     ResizeMode="CanMinimize" Background="{x:Null}" d:DesignWidth="870" d:DesignHeight="520" Width="850" Height="500" 
+     RenderTransformOrigin="0.5,0.5">
+diff --git a/Plain Craft Launcher 2/FormMain.xaml.vb b/Plain Craft Launcher 2/FormMain.xaml.vb
+index 902abdb..879a4c7 100644
+--- a/Plain Craft Launcher 2/FormMain.xaml.vb	
++++ b/Plain Craft Launcher 2/FormMain.xaml.vb	
+@@ -428,22 +428,15 @@ Public Class FormMain
+                 Thread.Sleep(100)
+                 DlClientListMojangLoader.Start(1) 'PCL 会同时根据这里的加载结果决定是否使用官方源进行下载
+                 RunCountSub()
+-                ServerLoader.Start()
+                 RunInNewThread(AddressOf TryClearTaskTemp, "TryClearTaskTemp", ThreadPriority.BelowNormal)
+             Catch ex As Exception
+                 Logger.Error(ex, "初始化加载池运行失败")
+             End Try
+-            '清理自动更新文件
+-            Try
+-                FileUtils.Delete(Paths.Base & "PCL\Plain Craft Launcher 2.exe")
+-            Catch ex As Exception
+-                Logger.Warn(ex, "清理自动更新文件失败")
+-            End Try
+             '上报
+             Telemetry("启动")
+-            '开源版本提示
+-            If VersionBranchMain = "OpenSource" Then
+-                MyMsgBox($"该版本中无法使用以下特性：{vbCrLf}- CurseForge API 调用：需要自行申请 API Key，然后添加到 ModSecret.vb 的开头{vbCrLf}- 正版登录：需要自行向微软申请 Client ID，然后添加到 ModSecret.vb 的开头{vbCrLf}- 更新与联网通知：避免滥用隐患{vbCrLf}- 主题切换：这是需要赞助解锁的纪念性质的功能，别让赞助者太伤心啦……{vbCrLf}- 百宝箱：开发早期往里面塞了些开发工具，整理起来太麻烦了……", "开源版本说明")
++            '仅首次启动说明与官方发行版的功能差异。
++            If Settings.Get(Of Integer)("SystemCount") = 1 Then
++                MyMsgBox($"这是第三方基于 PCL 2.14.0.0 制作的本地固定版。{vbCrLf}启动器自动更新、更新提示、远程公告和联网配置已移除。{vbCrLf}Minecraft 与资源下载功能保留。{vbCrLf}{vbCrLf}微软登录需要你自己的 Client ID，CurseForge 需要你自己的 API Key；配置方法见随包说明。官方联机服务不可用。", "PCL 本地固定版说明")
+             End If
+         End Sub, "初始化", ThreadPriority.Lowest)
+ 
+@@ -613,7 +606,6 @@ Public Class FormMain
+         On Error Resume Next
+         IsProgramEnding = True
+         AniControlEnabled += 1
+-        If IsUpdateWaitingRestart Then UpdateRestart(False)
+         If ReturnCode = ProcessReturnValues.Exception Then
+             If Not IsLogShown Then
+                 FeedbackInfo()
+diff --git a/Plain Craft Launcher 2/Modules/Base/ModBase.vb b/Plain Craft Launcher 2/Modules/Base/ModBase.vb
+index 6a89d7f..4ce7f0e 100644
+--- a/Plain Craft Launcher 2/Modules/Base/ModBase.vb	
++++ b/Plain Craft Launcher 2/Modules/Base/ModBase.vb	
+@@ -15,7 +15,7 @@ Public Module ModBase
+ #End If
+ 
+     '版本信息
+-    Public Const VersionDisplay As String = BuildTypeDisplay & " " & VersionBaseName
++    Public Const VersionDisplay As String = "本地固定版 " & VersionBaseName
+ #If DEBUG Then
+     Public Const BuildTypeDisplay As String = "开发版"
+     Public Const BuildType As BuildTypes = BuildTypes.Debug
+@@ -47,7 +47,7 @@ Public Module ModBase
+     ''' <summary>
+     ''' 程序的缓存文件夹路径，以 \ 结尾。
+     ''' </summary>
+-    Public PathTemp As String = PathUtils.AddSlashSuffix(If(Settings.Get(Of String)("SystemSystemCache") = "", Path.GetTempPath() & "PCL\", Settings.Get(Of String)("SystemSystemCache")).Replace("/", "\"))
++    Public PathTemp As String = PathUtils.AddSlashSuffix(If(Settings.Get(Of String)("SystemSystemCache") = "", Path.GetTempPath() & "PCLLocalFrozen214\", Settings.Get(Of String)("SystemSystemCache")).Replace("/", "\"))
+     ''' <summary>
+     ''' 当前程序的语言。
+     ''' </summary>
+diff --git a/Plain Craft Launcher 2/Modules/Base/PclLogger.vb b/Plain Craft Launcher 2/Modules/Base/PclLogger.vb
+index 9b1cc6f..fa78735 100644
+--- a/Plain Craft Launcher 2/Modules/Base/PclLogger.vb	
++++ b/Plain Craft Launcher 2/Modules/Base/PclLogger.vb	
+@@ -26,21 +26,13 @@ Public Class PclLogger
+             Case LogBehavior.Alert
+                 MyMsgBox(DetailText, "错误", IsWarn:=True)
+             Case LogBehavior.AlertThenFeedback
+-                If PageSetupSystem.IsLauncherNewest Then
+-                    If MyMsgBox(DetailText & vbCrLf & vbCrLf & "是否反馈此问题？如果不反馈，这个问题可能永远无法得到解决！", "错误", "反馈", "取消", IsWarn:=True) = 1 Then Feedback(False, True)
+-                Else
+-                    MyMsgBox(DetailText & vbCrLf & vbCrLf & "将 PCL 更新至最新版或许可以解决这个问题……", "错误", IsWarn:=True)
+-                End If
++                MyMsgBox(DetailText & vbCrLf & vbCrLf & "这是第三方本地固定版，请保留日志以便排查。", "错误", IsWarn:=True)
+             Case LogBehavior.AlertThenCrash
+                 Static FirstTrigger As Boolean = True
+                 If FirstTrigger Then
+                     '首次触发
+                     FirstTrigger = False
+-                    If PageSetupSystem.IsLauncherNewest Then
+-                        If MsgBox(DetailText & vbCrLf & vbCrLf & "是否反馈此问题？如果不反馈，这个问题可能永远无法得到解决！", MsgBoxStyle.Critical + MsgBoxStyle.YesNo, "错误") = MsgBoxResult.Yes Then Feedback(False, True)
+-                    Else
+-                        MsgBox(DetailText & vbCrLf & vbCrLf & "将 PCL 更新至最新版或许可以解决这个问题……", MsgBoxStyle.Critical, "错误")
+-                    End If
++                    MsgBox(DetailText & vbCrLf & vbCrLf & "这是第三方本地固定版，请保留日志以便排查。", MsgBoxStyle.Critical, "错误")
+                 Else
+                     '多次触发，直接使程序崩溃（这通常代表着在其他线程循环触发严重异常）
+                     Thread.Sleep(2000)
+diff --git a/Plain Craft Launcher 2/Modules/Minecraft/ModCrash.vb b/Plain Craft Launcher 2/Modules/Minecraft/ModCrash.vb
+index ba029b1..b1ebb04 100644
+--- a/Plain Craft Launcher 2/Modules/Minecraft/ModCrash.vb	
++++ b/Plain Craft Launcher 2/Modules/Minecraft/ModCrash.vb	
+@@ -1114,9 +1114,7 @@ NextStack:
+                     ReplaceLineEndings(vbCrLf).
+                     Trim(vbCrLf.ToCharArray) &
+                 If(Not Results.Any(Function(r) r.EndsWithF("\h")) OrElse IsHandAnalyze, "",
+-                    vbCrLf & "如果要寻求帮助，请把错误报告文件发给对方，而不是发送这个窗口的照片或者截图。" &
+-                    If(If(PageSetupSystem.IsLauncherNewest(), True), "",
+-                    vbCrLf & vbCrLf & "此外，你正在使用老版本 PCL，更新 PCL 或许也能解决这个问题。" & vbCrLf & "你可以点击 [设置 → 其他 → 启动器 → 检查更新] 更新 PCL。"))
++                    vbCrLf & "如果要寻求帮助，请把错误报告文件发给对方，而不是发送这个窗口的照片或者截图。")
+     End Function
+ 
+ End Class
+diff --git a/Plain Craft Launcher 2/Modules/ModEvent.vb b/Plain Craft Launcher 2/Modules/ModEvent.vb
+index 5db54c4..ef4600c 100644
+--- a/Plain Craft Launcher 2/Modules/ModEvent.vb	
++++ b/Plain Craft Launcher 2/Modules/ModEvent.vb	
+@@ -345,7 +345,7 @@ Public Class CustomEvent
+                     End Sub)
+ 
+                 Case EventType.检查更新
+-                    UpdateCheckByButton()
++                    Hint("本地固定版已移除启动器更新功能。")
+ 
+                 Case Else
+                     MyMsgBox("未知的事件类型：" & Type & vbCrLf & "请检查事件类型填写是否正确，或者 PCL 是否为最新版本。", "事件执行失败")
+diff --git a/Plain Craft Launcher 2/Modules/ModSecret.vb b/Plain Craft Launcher 2/Modules/ModSecret.vb
+index 598102a..e9414c3 100644
+--- a/Plain Craft Launcher 2/Modules/ModSecret.vb	
++++ b/Plain Craft Launcher 2/Modules/ModSecret.vb	
+@@ -3,9 +3,9 @@
+ Friend Module ModSecret
+ 
+     '标注 PCL 的不同分支，仅用于替换标记
+-    Public Const VersionBranchMain As String = "OpenSource"
++    Public Const VersionBranchMain As String = "LocalFrozen"
+     '在开源版的注册表与常规版的注册表隔离，以防数据冲突
+-    Public Const RegFolder As String = "PCLDebug"
++    Public Const RegFolder As String = "PCLLocalFrozen214"
+     '用于微软登录的 ClientId
+     Public OAuthClientId As String = If(Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID"), "")
+     'CurseForge API Key
+@@ -142,40 +142,9 @@ Friend Module ModSecret
+ 
+ #End Region
+ 
+-#Region "更新"
+-
+-    Friend Sub UpdateCheckByButton()
+-        Hint("该版本中不包含更新功能……")
+-    End Sub
+-
+-    Friend IsUpdateWaitingRestart As Boolean = False
+-    Public Sub UpdateRestart(TriggerRestartAndByEnd As Boolean)
+-    End Sub
+-    Public Sub UpdateReplace(ProcessId As Integer, OldFileName As String, NewFileName As String, TriggerRestart As Boolean)
+-    End Sub
+-
+-    ''' <summary>
+-    ''' 确保 PathTemp/Latest.exe 是最新正式版的 PCL，它会被用于整合包打包。
+-    ''' 如果不是，则下载一个。
+-    ''' </summary>
+-    Friend Sub DownloadLatestPCL(Optional LoaderToSyncProgress As LoaderBase = Nothing)
+-        '注意：如果要自行实现这个功能，请换用另一个文件路径，以免与官方版本冲突
+-    End Sub
+-
+-#End Region
+-
+-#Region "联网配置"
+-
+-    ''' <summary>
+-    ''' 联网获取的配置信息。
+-    ''' 若获取失败或仍在获取中，可能为 Nothing。
+-    ''' </summary>
+-    Public ServerConfig As JObject
+-
+-    Public ServerLoader As New LoaderTask(Of Integer, Integer)("PCL 配置更新", Sub() Logger.Info("该版本中不包含更新通知功能……"), Priority:=ThreadPriority.BelowNormal) With
+-        {.ReloadTimeout = 1000 * 60 * 60} '超时 1 小时
+-
+-#End Region
++'本地固定版不包含启动器更新器、公告加载器或远程配置加载器。
++    '保留联机页面的只读空配置；没有官方配置时明确报告该功能不可用。
++    Public ReadOnly ServerConfig As JObject = Nothing
+ 
+ #Region "赞助等级"
+ 
+diff --git a/Plain Craft Launcher 2/My Project/AssemblyInfo.vb b/Plain Craft Launcher 2/My Project/AssemblyInfo.vb
+index fb6f794..4c6a4cf 100644
+--- a/Plain Craft Launcher 2/My Project/AssemblyInfo.vb	
++++ b/Plain Craft Launcher 2/My Project/AssemblyInfo.vb	
+@@ -9,9 +9,9 @@ Imports System.Runtime.InteropServices
+ '查看程序集特性的值
+ 
+ <Assembly: AssemblyTitle("Plain Craft Launcher 启动器")>
+-<Assembly: AssemblyDescription("Minecraft 启动器")>
++<Assembly: AssemblyDescription("基于 PCL 2.14.0.0 的第三方本地固定版；移除启动器更新与远程公告")>
+ <Assembly: AssemblyCompany("")>
+-<Assembly: AssemblyProduct("Plain Craft Launcher")>
++<Assembly: AssemblyProduct("Plain Craft Launcher (PCL) 本地固定版")>
+ <Assembly: AssemblyCopyright("Copyright © 成都瓜皮龙科技有限公司")>
+ <Assembly: AssemblyConfiguration("PCL2 Config Mark")>
+ <Assembly: ComVisible(False)>
+diff --git a/Plain Craft Launcher 2/Pages/PageDownload/PageDownloadModify.vb b/Plain Craft Launcher 2/Pages/PageDownload/PageDownloadModify.vb
+index ae44e04..9b79f86 100644
+--- a/Plain Craft Launcher 2/Pages/PageDownload/PageDownloadModify.vb	
++++ b/Plain Craft Launcher 2/Pages/PageDownload/PageDownloadModify.vb	
+@@ -56,7 +56,7 @@ Public Class PageDownloadModify
+         Dim Manifest = Configs.McInstallManifest.Get(Task.Input.Config)
+         If Manifest IsNot Nothing AndAlso Manifest.SchemaVersion > Versions.McInstallManifestVersion Then
+             Logger.Warn($"安装清单由更新版本的 PCL 创建（清单版本：{Manifest.SchemaVersion}，当前版本：{Versions.McInstallManifestVersion}）")
+-            Throw New Exception($"更新 PCL 后才能修改它！点击【设置 → 其他 → 检查更新】以更新。")
++            Throw New Exception($"当前固定版尚不支持修改它，请使用支持该组件格式的启动器版本。")
+         End If
+         If Manifest IsNot Nothing Then
+             Dim LatestManifest = Manifest.RefreshModComponents(Task.Input.PathIndie)
+diff --git a/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml b/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml
+index 0c8c0e8..99eada9 100644
+--- a/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml	
++++ b/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml	
+@@ -263,7 +263,7 @@
+                             <local:MyCheckBox.Tag>
+                                 <local:ExportOption 
+                                 Title="PCL 启动器程序"
+-                                Description="打包正式版 PCL，以便没有启动器的玩家安装整合包"
++                                Description="打包当前本地固定版启动器，不下载官方启动器"
+                                 DefaultChecked="True" />
+                             </local:MyCheckBox.Tag>
+                         </local:MyCheckBox>
+diff --git a/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml.vb b/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml.vb
+index ee4db80..890d1c9 100644
+--- a/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml.vb	
++++ b/Plain Craft Launcher 2/Pages/PageInstance/PageInstanceExport.xaml.vb	
+@@ -473,18 +473,6 @@ Public Class PageInstanceExport
+         '构造步骤加载器
+         Dim Loaders As New List(Of LoaderBase)
+ 
+-#Region "准备 PCL 文件"
+-
+-        If BuildType <> BuildTypes.Release AndAlso IncludePCL Then
+-            Loaders.Add(New LoaderTask(Of Integer, Integer)("下载 PCL 正式版",
+-            Sub(Loader As LoaderTask(Of Integer, Integer))
+-                DownloadLatestPCL(Loader)
+-                FileUtils.Copy(PathTemp & "Latest.exe", CacheFolder & "Plain Craft Launcher.exe")
+-            End Sub) With {.ProgressWeight = 0.5, .Block = False})
+-        End If
+-
+-#End Region
+-
+ #Region "复制文件"
+ 
+         Loaders.Add(New LoaderTask(Of Integer, List(Of LocalResourceFile))("复制导出内容",
+@@ -566,7 +554,7 @@ Public Class PageInstanceExport
+             If DirectoryUtils.Exists(TargetInstance.PathVersion & "PCL\") Then DirectoryUtils.Copy(TargetInstance.PathVersion & "PCL\", OverridesFolder & "PCL\")
+             WriteIni(OverridesFolder & "PCL\Setup.ini", "IsStar", False)
+             '复制 PCL 本体（正式版）
+-            If BuildType = BuildTypes.Release AndAlso IncludePCL Then FileUtils.Copy(PathExe, CacheFolder & "Plain Craft Launcher.exe")
++            If IncludePCL Then FileUtils.Copy(PathExe, CacheFolder & "Plain Craft Launcher.exe")
+             '复制 PCL 个性化内容
+             If IncludePCLCustom Then
+                 If DirectoryUtils.Exists(Paths.Base & "PCL\Pictures\") Then DirectoryUtils.Copy(Paths.Base & "PCL\Pictures\", CacheFolder & "PCL\Pictures\")
+diff --git a/Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml.vb b/Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml.vb
+index 447dbcc..c8cb217 100644
+--- a/Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml.vb	
++++ b/Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml.vb	
+@@ -425,12 +425,8 @@ Public Class PageLinkMain
+ 
+     '1. 获取服务器配置
+     Private Sub InitConfig(Task As LoaderTask(Of Integer, Integer))
+-        UpdateLoadingPage("正在联网获取配置……", "联网获取配置")
+-        If VersionBranchMain <> "Official" Then
+-            Throw New Exception($"$开源版无法联网获取配置。{vbCrLf}你可以在 PCL 官方版的缓存文件夹下查看 ServerConfig 的当前内容， 并在代码中进行相应修改。")
+-        End If
+-        ServerLoader.WaitForExit(LoaderToSyncProgress:=Task)
+-        If ServerConfig Is Nothing Then Throw New Exception("无法从服务器获取配置")
++        UpdateLoadingPage("正在检查本地配置……", "检查本地配置")
++        If ServerConfig Is Nothing Then Throw New Exception("$本地固定版已移除联网配置，无法使用依赖官方配置的联机服务。")
+         '检查是否已禁用联机功能
+         Dim DisableReason = ServerConfig("Link")?("DisableReason2")?.ToString
+         If Not String.IsNullOrEmpty(DisableReason) Then Throw New Exception("$" & DisableReason) 'TODO: 可能不会显示错误原因？
+diff --git a/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml b/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml
+index 4cdff7e..0871ce1 100644
+--- a/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml	
++++ b/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml	
+@@ -20,7 +20,7 @@
+                     </Grid.ColumnDefinitions>
+                     <local:MyListItem IsHitTestVisible="False" Title="龙腾猫跃" Margin="-5,0,15,0" Info="Plain Craft Launcher 的开发者！" Grid.Row="0" Grid.Column="1" />
+                     <local:MyListItem IsHitTestVisible="False" Title="HerobrineXia" Margin="-5,0,15,0" Info="Plain Craft Launcher 的协力开发者！" Grid.Row="1" Grid.Column="1" />
+-                    <local:MyListItem IsHitTestVisible="False" Title="Plain Craft Launcher 2" Margin="-5,0,15,0" Info="当前版本：%VERSION%（%VERSIONCODE%.%BRANCH%）" Grid.Row="2" Grid.Column="1" x:Name="ItemAboutPcl" />
++                    <local:MyListItem IsHitTestVisible="False" Title="PCL 本地固定版（第三方修改）" Margin="-5,0,15,0" Info="当前版本：%VERSION%（%VERSIONCODE%.%BRANCH%）" Grid.Row="2" Grid.Column="1" x:Name="ItemAboutPcl" />
+                     <Image Source="/Plain Craft Launcher 2;component/Images/Heads/LTCat.jpg" Grid.Row="0" Margin="3">
+                         <Image.Clip>
+                             <EllipseGeometry Center="17 17" RadiusX="17" RadiusY="17" />
+@@ -38,8 +38,7 @@
+                     </Image>
+                     <local:MyButton Text="赞助 PCL !" Grid.Column="2" Grid.Row="0" Height="35" ColorType="Highlight"
+                                     local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://meloong.com/afd/a/LTCat" />
+-                    <local:MyButton Text="检查更新" Grid.Column="2" Grid.Row="2" Height="35" 
+-                                    x:Name="BtnAboutUpdate" />
++                    <TextBlock Text="启动器更新已移除" Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                 </Grid>
+             </local:MyCard>
+             <local:MyCard Margin="0,0,0,15" Title="特别鸣谢">
+diff --git a/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml.vb b/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml.vb
+index 09355b1..8c7ca71 100644
+--- a/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml.vb	
++++ b/Plain Craft Launcher 2/Pages/PageOther/PageOtherAbout.xaml.vb	
+@@ -27,8 +27,5 @@ Public Class PageOtherAbout
+     Private Sub BtnDonateOutput_Click(sender As Object, e As EventArgs) Handles BtnDonateOutput.Click
+         GeneratePotatoCode()
+     End Sub
+-    Private Sub BtnAboutUpdate_Click(sender As Object, e As MouseButtonEventArgs) Handles BtnAboutUpdate.Click
+-        UpdateCheckByButton()
+-    End Sub
+ 
+ End Class
+diff --git a/Plain Craft Launcher 2/Pages/PageOther/PageOtherLeft.xaml.vb b/Plain Craft Launcher 2/Pages/PageOther/PageOtherLeft.xaml.vb
+index 40fac3f..178865a 100644
+--- a/Plain Craft Launcher 2/Pages/PageOther/PageOtherLeft.xaml.vb	
++++ b/Plain Craft Launcher 2/Pages/PageOther/PageOtherLeft.xaml.vb	
+@@ -131,12 +131,6 @@ Public Class PageOtherLeft
+         e.Handled = True
+     End Sub
+     Public Shared Sub TryFeedback()
+-        If False.Equals(PageSetupSystem.IsLauncherNewest) Then
+-            If MyMsgBox($"你的 PCL 不是最新版，因此无法提交反馈。{vbCrLf}请在更新后，确认该问题在最新版中依然存在，然后再提交反馈。", "无法提交反馈", "更新", "取消") = 1 Then
+-                UpdateCheckByButton()
+-            End If
+-            Return
+-        End If
+         Select Case MyMsgBox("在提交新反馈前，建议先搜索反馈列表，以避免重复提交。" & vbCrLf & "如果无法打开该网页，请使用 VPN 改善网络环境。",
+                     "反馈", "提交新反馈", "查看反馈列表", "取消")
+             Case 1
+diff --git a/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml b/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml
+index f0d09e5..9d12e40 100644
+--- a/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml	
++++ b/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml	
+@@ -111,9 +111,7 @@
+                         <ColumnDefinition Width="1*" />
+                     </Grid.ColumnDefinitions>
+                     <Grid.RowDefinitions>
+-                        <RowDefinition Height="28" />
+-                        <RowDefinition Height="9" />
+-                        <RowDefinition Height="28" />
++                        <RowDefinition Height="Auto" />
+                         <RowDefinition Height="9" />
+                         <RowDefinition Height="28" />
+                         <RowDefinition Height="5" />
+@@ -121,40 +119,27 @@
+                         <RowDefinition Height="Auto" />
+                         <RowDefinition Height="Auto" />
+                     </Grid.RowDefinitions>
+-                    <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="启动器更新" Margin="0,0,25,0" />
+-                    <local:MyComboBox x:Name="ComboSystemUpdate" local:SettingService.Key="SystemSystemUpdate" Grid.Column="1">
+-                        <local:MyComboBoxItem Content="在有新版本时自动下载" x:Name="ItemSystemUpdateDownload" />
+-                        <local:MyComboBoxItem Content="在有新版本时显示提示" />
+-                        <local:MyComboBoxItem Content="仅在有重大漏洞更新时显示提示" />
+-                        <local:MyComboBoxItem Content="关闭更新提示" />
+-                    </local:MyComboBox>
+-                    <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="启动器公告" Margin="0,0,25,0" Grid.Row="2" />
+-                    <local:MyComboBox x:Name="ComboSystemActivity" local:SettingService.Key="SystemSystemActivity" Grid.Column="1" Grid.Row="2">
+-                        <local:MyComboBoxItem Content="显示所有公告" ToolTip="显示包括启动器功能调查、活动等在内的全部公告" />
+-                        <local:MyComboBoxItem Content="仅在有重要通知时显示公告" />
+-                        <local:MyComboBoxItem Content="关闭所有公告" />
+-                    </local:MyComboBox>
+-                    <TextBlock Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Left" Text="缓存文件夹" Margin="0,0,25,0" />
+-                    <local:MyTextBox x:Name="TextSystemCache" Grid.Row="4" Grid.ColumnSpan="2" local:SettingService.Key="SystemSystemCache" Grid.Column="1" ToolTip="PCL 的下载、皮肤等缓存文件的存储位置。&#xa;不推荐路径中带有空格。&#xa;留空即为默认值，重启 PCL 后生效。" HintText="默认">
++                    <TextBlock Grid.ColumnSpan="2" Text="本地固定版：已移除启动器更新、远程公告与联网配置。" TextWrapping="Wrap" Margin="0,0,0,4" />
++                    <TextBlock Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Left" Text="缓存文件夹" Margin="0,0,25,0" />
++                    <local:MyTextBox x:Name="TextSystemCache" Grid.Row="2" Grid.ColumnSpan="2" local:SettingService.Key="SystemSystemCache" Grid.Column="1" ToolTip="PCL 的下载、皮肤等缓存文件的存储位置。&#xa;不推荐路径中带有空格。&#xa;留空即为默认值，重启 PCL 后生效。" HintText="默认">
+                         <local:MyTextBox.ValidateRules>
+                             <local:ValidateNullable />
+                             <local:ValidateFolderPath UseMinecraftCharCheck="False" />
+                         </local:MyTextBox.ValidateRules>
+                     </local:MyTextBox>
+-                    <local:MyCheckBox Margin="0,5,0,4" Text="匿名数据收集" Grid.Row="6" Height="22" Grid.ColumnSpan="2"
++                    <local:MyCheckBox Margin="0,5,0,4" Text="匿名数据收集" Grid.Row="4" Height="22" Grid.ColumnSpan="2"
+                         x:Name="CheckSystemTelemetry" local:SettingService.Key="SystemSystemTelemetry" 
+                         ToolTip="当下载失败、PCL 出错、游戏崩溃等事件时，PCL 会匿名上报情况，以通知龙猫 “哦吼，出错了”，让龙猫能更好地修 Bug……&#xa;你可以关闭上报，不过龙猫就不知道你遇到了什么 Bug 了……&#13;PCL 不会上传或收集任何个人信息，包括上报的东西里面也没有！&#xa;详情：https://github.com/Meloong-Git/PCL/discussions/7036" />
+-                    <Grid Height="35" Grid.Row="7" Grid.ColumnSpan="5" Margin="0,12,0,0">
++                    <Grid Height="35" Grid.Row="5" Grid.ColumnSpan="5" Margin="0,12,0,0">
+                         <Grid.ColumnDefinitions>
+                             <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
+                             <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
+                             <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
+                         </Grid.ColumnDefinitions>
+-                        <local:MyButton Grid.Column="0" x:Name="BtnSystemUpdate" MinWidth="140" Text="检查更新" Padding="13,0" Margin="0,0,20,0" />
+-                        <local:MyButton Grid.Column="1" x:Name="BtnSystemSettingExp" MinWidth="140" Text="导出设置" Padding="13,0" Margin="0,0,20,0" />
+-                        <local:MyButton Grid.Column="2" x:Name="BtnSystemSettingImp" MinWidth="140" Text="导入设置" Padding="13,0" Margin="0,0,20,0" />
++                        <local:MyButton Grid.Column="0" x:Name="BtnSystemSettingExp" MinWidth="140" Text="导出设置" Padding="13,0" Margin="0,0,20,0" />
++                        <local:MyButton Grid.Column="1" x:Name="BtnSystemSettingImp" MinWidth="140" Text="导入设置" Padding="13,0" Margin="0,0,20,0" />
+                     </Grid>
+-                    <Grid Height="35" Grid.Row="8" Grid.ColumnSpan="5" Margin="0,12,0,0" x:Name="PanDonate">
++                    <Grid Height="35" Grid.Row="6" Grid.ColumnSpan="5" Margin="0,12,0,0" x:Name="PanDonate">
+                         <Grid.ColumnDefinitions>
+                             <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
+                             <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
+diff --git a/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml.vb b/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml.vb
+index 1f1adf5..a44fd8d 100644
+--- a/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml.vb	
++++ b/Plain Craft Launcher 2/Pages/PageSetup/PageSetupSystem.xaml.vb	
+@@ -10,7 +10,6 @@ Public Class PageSetupSystem
+             PanDonate.Visibility = Visibility.Collapsed
+         Else
+             PanDonate.Visibility = Visibility.Visible
+-            ItemSystemUpdateDownload.Content = "在有新版本时自动下载（更新快照版前需要先输入土豆码）"
+         End If
+ 
+         '非重复加载部分
+@@ -78,47 +77,6 @@ Public Class PageSetupSystem
+         If AniControlEnabled = 0 Then Hint("部分调试信息将在刷新或启动器重启后切换显示！",, False)
+     End Sub
+ 
+-    '自动更新
+-    Private Sub ComboSystemActivity_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles ComboSystemActivity.SelectionChanged
+-        If AniControlEnabled <> 0 Then Return
+-        If ComboSystemActivity.SelectedIndex <> 2 Then Return
+-        If MyMsgBox("若选择此项，即使在将来出现严重问题时，你也无法获取相关通知。" & vbCrLf &
+-                    "例如，如果发现某个版本游戏存在严重 Bug，你可能就会因为无法得到通知而导致无法预知的后果。" & vbCrLf & vbCrLf &
+-                    "一般选择 仅在有重要通知时显示公告 就可以让你尽量不受打扰了。" & vbCrLf &
+-                    "除非你在制作服务器整合包，或时常手动更新启动器，否则极度不推荐选择此项！", "警告", "我知道我在做什么", "取消", IsWarn:=True) = 2 Then
+-            If e.RemovedItems.Count > 0 Then ComboSystemActivity.SelectedItem = e.RemovedItems(0)
+-        End If
+-    End Sub
+-    Private Sub ComboSystemUpdate_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles ComboSystemUpdate.SelectionChanged
+-        If AniControlEnabled <> 0 Then Return
+-        If ComboSystemUpdate.SelectedIndex <> 3 Then Return
+-        If MyMsgBox("若选择此项，即使在启动器将来出现严重问题时，你也无法获取更新并获得修复。" & vbCrLf &
+-                    "例如，如果官方修改了登录方式，从而导致现有启动器无法登录，你可能就会因为无法更新而无法开始游戏。" & vbCrLf & vbCrLf &
+-                    "一般选择 仅在有重大漏洞更新时显示提示 就可以让你尽量不受打扰了。" & vbCrLf &
+-                    "除非你在制作服务器整合包，或时常手动更新启动器，否则极度不推荐选择此项！", "警告", "我知道我在做什么", "取消", IsWarn:=True) = 2 Then
+-            If e.RemovedItems.Count > 0 Then ComboSystemUpdate.SelectedItem = e.RemovedItems(0)
+-        End If
+-    End Sub
+-    Private Sub BtnSystemUpdate_Click(sender As Object, e As EventArgs) Handles BtnSystemUpdate.Click
+-        UpdateCheckByButton()
+-    End Sub
+-    ''' <summary>
+-    ''' 启动器是否已经是最新版？
+-    ''' 若返回 Nothing，则代表无更新缓存文件或出错。
+-    ''' </summary>
+-    Public Shared Function IsLauncherNewest() As Boolean?
+-        Try
+-            '确认服务器公告是否正常
+-            Dim ServerContent As String = If(FileUtils.TryReadAsString(PathTemp & "Cache\Notice.cfg"), "")
+-            If ServerContent.Split("|").Count < 3 Then Return Nothing
+-            '确认是否为最新
+-            Return ServerContent.Split("|")(If(BuildType = BuildTypes.Release, 2, 1)) <= VersionCode
+-        Catch ex As Exception
+-            Logger.Error(ex, "确认启动器更新失败")
+-            Return Nothing
+-        End Try
+-    End Function
+-
+ #Region "导出 / 导入设置"
+ 
+     Private Sub BtnSystemSettingExp_Click(sender As Object, e As MouseButtonEventArgs) Handles BtnSystemSettingExp.Click
+diff --git a/Plain Craft Launcher 2/Pages/PageSetup/Settings.vb b/Plain Craft Launcher 2/Pages/PageSetup/Settings.vb
+index 269c42c..092479d 100644
+--- a/Plain Craft Launcher 2/Pages/PageSetup/Settings.vb	
++++ b/Plain Craft Launcher 2/Pages/PageSetup/Settings.vb	
+@@ -35,8 +35,6 @@ Public Class Settings
+         New Setting("SystemDebugDelay", False, Source:=Sources.Registry),
+         New Setting("SystemDebugSkipCopy", False, Source:=Sources.Registry),
+         New Setting("SystemSystemCache", "", Source:=Sources.Registry),
+-        New Setting("SystemSystemUpdate", 0),
+-        New Setting("SystemSystemActivity", 0),
+         New Setting("SystemSystemTelemetry", True, Source:=Sources.Registry),
+         New Setting("CacheDrops", "", Source:=Sources.Registry),
+         New Setting("CacheConfig", 0, Source:=Sources.Registry),
+diff --git a/Plain Craft Launcher 2/Plain Craft Launcher 2.vbproj b/Plain Craft Launcher 2/Plain Craft Launcher 2.vbproj
+index 65b544b..dc4270c 100644
+--- a/Plain Craft Launcher 2/Plain Craft Launcher 2.vbproj	
++++ b/Plain Craft Launcher 2/Plain Craft Launcher 2.vbproj	
+@@ -951,4 +951,13 @@
+ 
+   </ItemGroup>
+   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+-</Project>
+\ No newline at end of file
++  <!-- Portable SDK builds need an explicit WPF import; desktop MSBuild already imports it. -->
++  <PropertyGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
++    <IncludePackageReferencesDuringMarkupCompilation>false</IncludePackageReferencesDuringMarkupCompilation>
++  </PropertyGroup>
++  <ItemGroup Condition="'$(MSBuildRuntimeType)' == 'Core'">
++    <Reference Include="mscorlib" />
++    <Reference Include="Microsoft.VisualBasic" />
++  </ItemGroup>
++  <Import Project="$(MSBuildToolsPath)\Sdks\Microsoft.NET.Sdk.WindowsDesktop\targets\Microsoft.WinFX.targets" Condition="'$(MSBuildRuntimeType)' == 'Core'" />
++</Project>
